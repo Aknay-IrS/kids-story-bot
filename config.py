@@ -13,9 +13,9 @@ VIDEO_FPS         = 24
 VIDEO_BITRATE     = "4000k"
 
 # Voice - warm, gentle for kids
-VOICE_NAME        = "en-IN-NeerjaNeural"
-VOICE_RATE        = "-10%"   # slightly slower for kids
-VOICE_PITCH       = "+0Hz"
+VOICE_NAME        = "en-US-AnaNeural"
+VOICE_RATE        = "-5%"    # natural child pace
+VOICE_PITCH       = "+2Hz"   # slightly higher pitch for child feel
 
 # Story settings
 STORY_LENGTH      = "8-10 minutes"  # target duration
