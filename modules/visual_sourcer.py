@@ -8,6 +8,7 @@ import config
 
 log = logging.getLogger(__name__)
 PIXABAY_URL = "https://pixabay.com/api/videos/"
+PIXABAY_KEY_HARDCODED = "55951851-7282cb13bfe0431ff6400f2a0"
 FALLBACK_QUERIES = ["nature forest", "magical castle", "animals wildlife",
                     "meadow flowers", "river mountains", "sky clouds sunset"]
 
@@ -15,7 +16,7 @@ def get_pexels_headers():
     return {"Authorization": os.environ.get("PEXELS_API_KEY", config.PIXABAY_API_KEY)}
 
 def search_videos(query, count=8):
-    params = {"key": os.environ.get("PIXABAY_API_KEY", config.PIXABAY_API_KEY),
+    params = {"key": os.environ.get("PIXABAY_API_KEY") or config.PIXABAY_API_KEY or PIXABAY_KEY_HARDCODED,
               "q": " ".join(query.split()[:3]),
               "video_type": "film", "per_page": min(count*2, 20), "safesearch": "true"}
     try:
