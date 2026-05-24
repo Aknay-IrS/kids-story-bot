@@ -1,0 +1,59 @@
+name: Daily Kids Story
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Story topic (leave blank for random)"
+        required: false
+        default: ""
+
+jobs:
+  make-story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core fonts-liberation imagemagick libmagickwand-dev --no-install-recommends
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Setup credentials
+        run: |
+          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > token.json
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
+
+      - name: Generate and upload story
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          TOPIC="${{ github.event.inputs.topic }}"
+          if [ -n "$TOPIC" ]; then
+            python main.py --topic "$TOPIC"
+          else
+            python main.py
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: story-output-${{ github.run_id }}
+          path: |
+            output/
+            pipeline.log
+          retention-days: 7
