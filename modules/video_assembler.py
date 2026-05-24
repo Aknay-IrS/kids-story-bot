@@ -26,7 +26,11 @@ def get_audio_duration_ffprobe(audio_path):
         except Exception:
             return 540.0
 
+PIXABAY_KEY_HARDCODED = "55951851-7282cb13bfe0431ff6400f2a0"
+
 def download_scene_images(visual_query, chapters, output_dir, pixabay_key):
+    import os
+    pixabay_key = os.environ.get("PIXABAY_API_KEY") or pixabay_key or PIXABAY_KEY_HARDCODED
     """Download one illustration per chapter/scene from Pixabay."""
     os.makedirs(output_dir, exist_ok=True)
     image_paths = []
@@ -49,31 +53,33 @@ def download_scene_images(visual_query, chapters, output_dir, pixabay_key):
 
     for i, query in enumerate(queries[:len(chapters)+2]):
         try:
+            key = os.environ.get("PIXABAY_API_KEY") or pixabay_key or PIXABAY_KEY_HARDCODED
             r = requests.get("https://pixabay.com/api/", params={
-                "key": pixabay_key,
+                "key": key,
                 "q": query,
-                "image_type": "illustration,photo",
+                "image_type": "photo",
                 "orientation": "horizontal",
                 "per_page": 5,
                 "safesearch": "true",
-                "min_width": 1280,
                 "order": "popular"
             }, timeout=15)
-            hits = r.json().get("hits", [])
+            r.raise_for_status()
+            data = r.json()
+            hits = data.get("hits", [])
             if not hits:
-                # fallback to photo
                 r2 = requests.get("https://pixabay.com/api/", params={
-                    "key": pixabay_key, "q": fallbacks[i % len(fallbacks)],
+                    "key": key, "q": fallbacks[i % len(fallbacks)],
                     "image_type": "photo", "orientation": "horizontal",
-                    "per_page": 5, "safesearch": "true", "min_width": 1280
+                    "per_page": 5, "safesearch": "true"
                 }, timeout=15)
+                r2.raise_for_status()
                 hits = r2.json().get("hits", [])
 
             if hits:
-                # Pick a random one from top 5
                 hit = random.choice(hits[:5])
                 img_url = hit.get("largeImageURL") or hit.get("webformatURL")
                 img_r = requests.get(img_url, timeout=30)
+                img_r.raise_for_status()
                 img_path = os.path.join(output_dir, f"scene_{i:02d}.jpg")
                 with open(img_path, 'wb') as f:
                     f.write(img_r.content)
@@ -287,8 +293,9 @@ def assemble_video(clip_paths, audio_path, captions, title, chapters, output_pat
         pass
 
     # Actually download images based on chapters
+    key = os.environ.get("PIXABAY_API_KEY") or config.PIXABAY_API_KEY or "55951851-7282cb13bfe0431ff6400f2a0"
     image_paths = download_scene_images(
-        visual_query, chapters, scenes_dir, pixabay_key
+        visual_query, chapters, scenes_dir, key
     )
 
     if not image_paths:
