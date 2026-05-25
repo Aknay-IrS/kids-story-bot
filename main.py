@@ -62,7 +62,7 @@ def make_story_video(topic=None, dry_run=False, no_upload=False):
     # Step 4: Video assembly
     log.info("STEP 4: Video Assembly")
     video_path = str(work_dir / "story.mp4")
-    assemble_video(clips, audio_path, captions, story["title"], story["chapters"], video_path)
+    assemble_video(clips, audio_path, captions, story["title"], story["chapters"], video_path, scenes=story.get("scenes", []))
 
     # Step 5: Thumbnail
     log.info("STEP 5: Thumbnail")
