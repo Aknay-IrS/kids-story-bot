@@ -53,7 +53,15 @@ Return ONLY valid JSON (no markdown, no backticks):
   "moral": "The moral of this story in one simple sentence",
   "description": "YouTube description 3-4 lines with keywords",
   "tags": ["KidsStories", "BedtimeStories", "StoriesForKids", "FairyTales", "MoralStories"],
-  "visual_query": "3 word Pixabay search for background video (e.g. 'forest animals nature')"
+  "visual_query": "3 word search query for main story setting",
+  "scenes": [
+    {"chapter": "Chapter name", "description": "Detailed cartoon scene description for AI image generation, e.g. 'a clever brown monkey sitting in a mango tree, children book illustration, colorful, bright'"},
+    {"chapter": "Chapter name", "description": "another scene description"},
+    {"chapter": "Chapter name", "description": "another scene description"},
+    {"chapter": "Chapter name", "description": "another scene description"},
+    {"chapter": "Chapter name", "description": "another scene description"},
+    {"chapter": "Chapter name", "description": "another scene description"}
+  ]
 }}"""
 
     response = client.messages.create(
