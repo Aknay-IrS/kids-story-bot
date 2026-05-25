@@ -68,7 +68,7 @@ def make_story_video(topic=None, dry_run=False, no_upload=False):
     log.info("STEP 5: Thumbnail")
     thumb_path = str(work_dir / "thumbnail.jpg")
     try:
-        generate_thumbnail(story["title"], story["hook"], thumb_path, story["visual_query"])
+        generate_thumbnail(story["title"], story["hook"], thumb_path, story["visual_query"], moral=story.get("moral",""))
     except Exception as e:
         log.warning(f"Thumbnail failed: {e}")
         thumb_path = None
