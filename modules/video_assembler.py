@@ -54,51 +54,81 @@ def download_image(query, output_path, key):
         log.debug(f"Download failed for '{query}': {e}")
         return False
 
-def download_scene_images(visual_query, chapters, output_dir, num_images=8):
-    """Download images for each scene. Keeps trying until all images found."""
+def download_scene_images(visual_query, chapters, output_dir, num_images=8, scenes=None):
+    """Generate cartoon illustrations using Pollinations.ai - free, no API key needed."""
+    import urllib.parse
     os.makedirs(output_dir, exist_ok=True)
-    key = get_pixabay_key()
     image_paths = []
 
-    # Build query list: story-specific + chapter titles + guaranteed fallbacks
-    queries = [visual_query]
+    # Build prompts from story scenes if available, else from chapters
+    prompts = []
+    if scenes:
+        for s in scenes:
+            desc = s.get("description", "")
+            if desc:
+                prompts.append(desc + ", children book illustration, cartoon style, colorful, bright, cute")
+    
+    # Add chapter-based prompts
     for ch in chapters:
         title = ch.get("title", "")
-        clean = " ".join(w for w in title.split() if w.isalpha())[:30]
+        clean = " ".join(w for w in title.split() if w.isalpha())
         if clean:
-            queries.append(clean)
-    queries.extend(GUARANTEED_QUERIES)  # always enough fallbacks
+            prompts.append(f"{clean} scene, {visual_query}, children book illustration, cartoon style, colorful")
 
-    log.info(f"Downloading {num_images} scene images (key: {key[:8]}...)...")
+    # Add guaranteed fallback prompts
+    base = visual_query.replace("'", "")
+    fallbacks = [
+        f"{base} magical forest, children book illustration, cartoon style, bright colors",
+        f"{base} adventure scene, fairy tale illustration, cute characters, colorful",
+        f"enchanted forest animals, children storybook art, cartoon, bright",
+        f"magical castle kingdom, fairy tale illustration, colorful cartoon",
+        f"cute animals meadow, children book art, watercolor cartoon style",
+        f"brave hero journey, storybook illustration, colorful cartoon",
+        f"wise old character, children book illustration, cartoon, warm colors",
+        f"happy ending celebration, fairy tale art, colorful cartoon children",
+    ]
+    prompts.extend(fallbacks)
 
-    downloaded = 0
-    query_idx = 0
+    log.info(f"Generating {num_images} AI cartoon illustrations via Pollinations.ai...")
 
-    while downloaded < num_images and query_idx < len(queries):
-        img_path = os.path.join(output_dir, f"scene_{downloaded:02d}.jpg")
-        q = queries[query_idx]
-        query_idx += 1
-
-        success = download_image(q, img_path, key)
-        if success:
+    for i, prompt in enumerate(prompts[:num_images]):
+        img_path = os.path.join(output_dir, f"scene_{i:02d}.jpg")
+        try:
+            # Pollinations.ai - free AI image generation, no key needed
+            encoded = urllib.parse.quote(prompt)
+            url = f"https://image.pollinations.ai/prompt/{encoded}?width=1920&height=1080&model=flux&nologo=true&seed={i*42}"
+            
+            log.info(f"Generating scene {i+1}: '{prompt[:60]}...'")
+            r = requests.get(url, timeout=60, stream=True)
+            r.raise_for_status()
+            
+            content = b""
+            for chunk in r.iter_content(chunk_size=8192):
+                content += chunk
+            
+            if len(content) < 10000:  # too small = error
+                log.warning(f"Scene {i+1}: image too small ({len(content)} bytes), retrying...")
+                # retry with simpler prompt
+                simple = f"cartoon {visual_query}, children illustration, colorful"
+                url2 = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(simple)}?width=1920&height=1080&model=flux&nologo=true&seed={i*100}"
+                r2 = requests.get(url2, timeout=60)
+                r2.raise_for_status()
+                content = r2.content
+            
+            with open(img_path, 'wb') as f:
+                f.write(content)
             image_paths.append(img_path)
-            downloaded += 1
-            log.info(f"✅ Scene {downloaded}/{num_images}: '{q}'")
-        else:
-            log.debug(f"❌ No result for '{q}', trying next...")
+            log.info(f"✅ Scene {i+1}/{num_images} generated ({len(content)//1024}KB)")
+            
+            import time
+            time.sleep(1)  # be nice to Pollinations API
+            
+        except Exception as e:
+            log.warning(f"Scene {i+1} failed: {e}")
 
-    if not image_paths:
-        # Last resort: try very generic queries one more time
-        for q in ["nature", "forest", "sky", "water", "flowers"]:
-            img_path = os.path.join(output_dir, f"scene_last_{q}.jpg")
-            if download_image(q, img_path, key):
-                image_paths.append(img_path)
-                log.info(f"✅ Last resort image found: '{q}'")
-            if len(image_paths) >= 3:
-                break
-
-    log.info(f"Total images downloaded: {len(image_paths)}")
+    log.info(f"Generated {len(image_paths)} cartoon illustrations")
     return image_paths
+
 
 def get_audio_duration_ffprobe(audio_path):
     try:
@@ -243,7 +273,7 @@ def add_text_and_audio(bg_video, audio_path, title, captions, chapters, total_du
         raise RuntimeError(f"Final render failed: {result.stderr.decode()[:400]}")
     return output_path
 
-def assemble_video(clip_paths, audio_path, captions, title, chapters, output_path):
+def assemble_video(clip_paths, audio_path, captions, title, chapters, output_path, scenes=None):
     log.info("Assembling illustrated slideshow with Ken Burns...")
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
     total_dur = get_audio_duration_ffprobe(audio_path)
@@ -261,7 +291,7 @@ def assemble_video(clip_paths, audio_path, captions, title, chapters, output_pat
         if words:
             visual_query = ' '.join(words)
 
-    image_paths = download_scene_images(visual_query, chapters, scenes_dir, num_images=num_scenes)
+    image_paths = download_scene_images(visual_query, chapters, scenes_dir, num_images=num_scenes, scenes=scenes)
 
     if not image_paths:
         raise RuntimeError("Could not download ANY images from Pixabay. Check API key.")
