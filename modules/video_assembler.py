@@ -196,7 +196,7 @@ def crossfade_clips(clip_paths, output_path, fade_duration=1.5):
 
 def add_text_and_audio(bg_video, audio_path, title, captions, chapters, total_duration, output_path):
     filters = []
-    filters.append(f'drawbox=x=0:y={H-160}:w={W}:h=160:color=black@0.6:t=fill')
+    # No caption bar needed - using thick text border instead
 
     clean_title = ''.join(c if ord(c) < 128 else ' ' for c in title).strip()[:55]
     filters.append(f"drawbox=x=0:y=0:w={W}:h=100:color=black@0.7:t=fill:enable='between(t,0,5)'")
@@ -212,14 +212,22 @@ def add_text_and_audio(bg_video, audio_path, title, captions, chapters, total_du
             filters.append(f"drawbox=x=0:y=0:w={W}:h=80:color=black@0.7:t=fill:enable='between(t,{start_t:.1f},{end_t:.1f})'")
             filters.append(f"drawtext=text='{ch_title}':fontsize=46:fontcolor=white:borderw=3:bordercolor=black:x=(w-text_w)/2:y=18:enable='between(t,{start_t:.1f},{end_t:.1f})'")
 
+    # TikTok-style captions - BIG, BOLD, centered
     for cap in captions[:400]:
         start = cap['start_ms'] / 1000
         end = cap['end_ms'] / 1000
         if end <= start: end = start + 0.5
-        text = ''.join(c if ord(c) < 128 else ' ' for c in cap['text']).strip()
+        text = ''.join(c if ord(c) < 128 else ' ' for c in cap['text']).strip().upper()
         if not text or len(text) < 2: continue
-        text = text[:45].replace("'","")
-        filters.append(f"drawtext=text='{text}':fontsize=50:fontcolor=white:borderw=4:bordercolor=black:x=(w-text_w)/2:y={H-120}:enable='between(t,{start:.2f},{end:.2f})'")
+        text = text[:25].replace("'","").replace('"','')
+        # White text with thick black border - TikTok style
+        filters.append(
+            f"drawtext=text='{text}':"
+            f"fontsize=90:fontcolor=white:"
+            f"borderw=6:bordercolor=black:"
+            f"x=(w-text_w)/2:y=(h*0.72):"
+            f"enable='between(t,{start:.2f},{end:.2f})'"
+        )
 
     sub_start = max(0, total_duration - 8)
     filters.append(f"drawbox=x=(w-520)/2:y={H-220}:w=520:h=60:color=red@0.85:t=fill:enable='between(t,{sub_start:.1f},{total_duration:.1f})'")
