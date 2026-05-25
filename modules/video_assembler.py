@@ -95,7 +95,9 @@ def download_scene_images(visual_query, chapters, output_dir, num_images=8, scen
         img_path = os.path.join(output_dir, f"scene_{i:02d}.jpg")
         try:
             # Pollinations.ai - free AI image generation, no key needed
-            encoded = urllib.parse.quote(prompt)
+            # Keep prompts short to avoid 402 errors
+            short_prompt = prompt[:150]
+            encoded = urllib.parse.quote(short_prompt)
             url = f"https://image.pollinations.ai/prompt/{encoded}?width=1920&height=1080&model=flux&nologo=true&seed={i*42}"
             
             log.info(f"Generating scene {i+1}: '{prompt[:60]}...'")
